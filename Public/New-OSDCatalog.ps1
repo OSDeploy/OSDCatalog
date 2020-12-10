@@ -413,7 +413,7 @@ function New-OSDCatalog {
         Write-Host "$($CategoryItem.KnowledgeBaseArticles) $($CategoryItem.CreationDate) $($CategoryItem.Title)" -ForegroundColor Gray
         
         $UpdateFile = @()
-        $UpdateFile = Get-WsusUpdateFile -UpdateName $($CategoryItem.Title) | Select-Object -Property *
+        $UpdateFile = Get-WsusUpdateFile -Update $CategoryItem | Select-Object -Property *
         #$UpdateFile | Out-GridView -Wait
         #===================================================================================================
         #   OSDeploy Catalog Filters
@@ -604,26 +604,23 @@ function New-OSDCatalog {
 function Get-WsusUpdateFile {
     [CmdletBinding()]
     Param(
-        [Parameter(Position = 0, ValueFromPipeline = $True)]
-        [string]$UpdateName
+        [Parameter(Position = 0, ValueFromPipeline = $True, Mandatory = $True)]
+        [Microsoft.UpdateServices.Internal.BaseApi.Update]$Update
     )
 
-    Write-Verbose "Using 'Update Name' set name"
-    #Search for updates
-    Write-Verbose "Searching for update/s"
-    $patches = @($wsus.SearchUpdates($UpdateName))
-    If ($patches -eq 0) {
-        Write-Error "Update $update could not be found in WSUS!"
+    $patches = $Update
+    If (-not $patches) {
+        Write-Error "Update [$update] could not be found in WSUS!"
         Break
     } Else {
-        $Items = $patches | ForEach {
+        $Items = $patches | ForEach-Object {
             $Patch = $_
             Write-Verbose ("Adding NoteProperty for {0}" -f $_.Title)                    
-            $_.GetInstallableItems() | ForEach {
+            $_.GetInstallableItems() | ForEach-Object {
                 $itemdata = $_ | Add-Member -MemberType NoteProperty -Name KnowledgeBaseArticles -value $patch.KnowledgeBaseArticles -PassThru
                 $itemdata | Add-Member -MemberType NoteProperty -Name Title -value $patch.Title -PassThru
             }
-        }                
+        }
     }
     ForEach ($item in $items) {
         Write-Verbose ("Getting installable items on {0}" -f $item.Title)
